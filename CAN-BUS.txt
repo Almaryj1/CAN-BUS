@@ -1,0 +1,106 @@
+#include <SPI.h>
+#include <mcp2515.h>
+#include <LiquidCrystal_I2C.h">
+#include "Wire.h"
+
+
+//initialize the liquid crystal library
+//the first parameter is  the I2C address
+//the second parameter is how many rows are on your screen
+//the  third parameter is how many columns are on your screen
+LiquidCrystal_I2C lcd(0x27,  16, 2);
+
+struct can_frame canMsg;
+MCP2515 mcp2515(10);
+
+unsigned int distance
+int ldrValue
+
+
+void setup() {
+  mcp2515.reset();
+  mcp2515.setBitrate(CAN_125KBPS);
+  mcp2515.setNormalMode();
+  //initialize lcd screen
+  lcd.init();
+  // turn on the backlight
+  lcd.backlight();
+}
+ 
+void loop() {
+  if (mcp2515.readMessage(&canMsg) ==  MCP2515::ERROR_OK) {
+    distance = canMsg.data[0];
+    ldrValue = canMsg.data[1];
+    
+    if (distance < 5) {
+      // tell the screen to write on the top row
+      lcd.setCursor(0,0);
+      // tell the screen to write the "obstacle detected" on the top  row
+      lcd.print("Obstacle Detected"); 
+    } else {
+      // tell the screen to write on the top row
+      lcd.setCursor(0,0);
+      // tell the screen to write the " No obstacle detected" on the top  row
+      lcd.print("No Obstacle Detected"); 
+    }
+    if (ldrValue < 5) {
+      // tell the screen to write on the bottom  row
+      lcd.setCursor(0,1);
+      // tell the screen to write "its dark" on the bottom row
+      lcd.print("Its Dark");
+    } else {
+      // tell the screen to write on the bottom  row
+      lcd.setCursor(0,1);
+      // tell the screen to write "its bright" on the bottom row
+      lcd.print("Its Bright");
+    }
+    
+  }
+}
+
+
+-------------------------------------------
+
+
+#include <SPI.h>
+#include <mcp2515.h>
+#include <NewPing.h>
+
+MCP2515 mcp2515(10);    // Set the SPI chip select pin for MCP2515
+// Initialize MCP2515 CAN controller
+
+
+const int trigPin = 9;  // Ultrasonic sensor trigger pin
+const int echoPin = 8;  // Ultrasonic sensor echo pin
+NewPing sonar(trigPin, echoPin);
+struct can_frame canMsg;
+const int ldrPin = A0;   // LDR sensor pin
+
+void setup() {
+  Serial.begin(115200);
+  mcp2515.reset();
+  mcp2515.setBitrate(CAN_125KBPS);
+  mcp2515.setNormalMode();
+}
+
+void loop() {
+  // Read distance from ultrasonic sensor
+  unsigned int distance = sonar.ping_cm();
+
+  // Read light intensity from LDR sensor
+  int ldrValue = analogRead(ldrPin);
+
+  // Create a CAN message with distance and LDR values
+  canMsg.can_id  = 0x01;
+  canMsg.can_dlc = 2;
+  canMsg.data[0] = distance;
+  canMsg.data[1] = ldrValue;
+
+  Serial.println(distance);
+  Serial.println(ldrValue);
+  mcp2515.sendMessage(&canMsg);
+
+  delay(100);  // Adjust delay as needed
+}
+
+
